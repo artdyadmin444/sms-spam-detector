@@ -4,6 +4,7 @@ import json
 import hashlib
 import sqlite3
 import re
+import unicodedata
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -61,7 +62,6 @@ class ModelService:
 
         if dl_path.exists():
             try:
-                # ไม่ต้องโหลด optimizer เพราะใช้งานเพื่อทำนายอย่างเดียว
                 self.dl_model = tf.keras.models.load_model(
                     str(dl_path),
                     compile=False,
@@ -98,12 +98,44 @@ class ModelService:
             for name in names
         ]
 
+    @staticmethod
+    def _normalize_for_rules(text):
+        """
+        ทำข้อความให้อยู่ในรูปแบบที่ตรวจจับคำได้ง่ายขึ้น
+        เช่น P G -> pg และลบช่องว่างระหว่างอักษรไทย
+        """
+        value = unicodedata.normalize("NFKC", str(text or "")).lower()
+
+        # ลบ zero-width characters ที่อาจแทรกเพื่อหลบตัวกรอง
+        value = re.sub(r"[\u200b-\u200f\u2060\ufeff]", "", value)
+
+        # รวมตัวอักษรภาษาอังกฤษที่ถูกเว้นวรรคทีละตัว เช่น P G, p g
+        value = re.sub(
+            r"(?<![a-z])(?:[a-z]\s+){1,}[a-z](?![a-z])",
+            lambda m: re.sub(r"\s+", "", m.group(0)),
+            value,
+        )
+
+        # รวมอักษรไทยที่ถูกเว้นวรรคแทรก เช่น ปล่ อย
+        # ใช้เฉพาะช่องว่างระหว่างอักษรไทย ไม่ลบช่องว่างทุกตำแหน่ง
+        value = re.sub(
+            r"(?<=[\u0E00-\u0E7F])\s+(?=[\u0E00-\u0E7F])",
+            "",
+            value,
+        )
+
+        # รวมรูปแบบตัวเลขที่แทรกช่องว่าง เช่น 5 0
+        value = re.sub(r"(?<=\d)\s+(?=\d)", "", value)
+
+        return value
 
     @staticmethod
     def _risk_rule(text):
-        """ตรวจจับข้อความที่มีคำเกี่ยวกับการพนันและเครดิตฟรี"""
-        value = str(text or "").lower()
+        """ตรวจจับข้อความเสี่ยง เช่น พนัน เครดิตฟรี และข้อความชวนฝากถอน"""
+        original = str(text or "")
+        value = ModelService._normalize_for_rules(original)
 
+        # คำเกี่ยวกับการพนันและเครดิตฟรี
         risk_terms = [
             "สล็อต",
             "คาสิโน",
@@ -114,45 +146,132 @@ class ModelService:
             "สล็อตเว็บตรง",
             "เล่นสล็อต",
             "ฝากถอน",
+            "ถอนเงินไม่อั้น",
+            "ถอนง่าย",
+            "แตกง่าย",
+            "ปล่อยแตก",
+            "เครดิตฟรี",
+            "รับเครดิตฟรี",
+            "รับเงินฟรี",
+            "เครดิตฟรี50",
+            "เครดิตฟรี100",
+            "โบนัสฟรี",
+            "โบนัสสมาชิกใหม่",
+            "สมัครรับโบนัส",
             "pgslot",
+            "pg สล็อต",
             "jackpot",
             "casino",
             "gambling",
             "betting",
             "free credit",
+            "free bonus",
+            "claim your prize",
+            "you have won",
         ]
 
-        matched = [
-            term for term in risk_terms
-            if term in value
+        matched = [term for term in risk_terms if term in value]
+
+        # URL ทั่วไป รวมถึงลิงก์ย่อที่มักใช้ในข้อความโฆษณา
+        url_pattern = (
+            r"(?:https?://|www\.)\S+"
+            r"|(?:[a-z0-9-]+\.)"
+            r"(?:com|net|org|me|vip|bet|xyz|cc|co|ly|top|site|info)"
+            r"(?:/[^\s]*)?"
+        )
+        urls = re.findall(url_pattern, value, flags=re.IGNORECASE)
+        has_url = bool(urls)
+
+        shortener_domains = (
+            "cutt.ly",
+            "bit.ly",
+            "tinyurl.com",
+            "t.co",
+            "is.gd",
+            "rebrand.ly",
+            "rb.gy",
+            "shorturl.at",
+        )
+        has_short_url = any(domain in value for domain in shortener_domains)
+
+        # คำชวนรับของฟรี/เงินรางวัลร่วมกับลิงก์เป็นสัญญาณเสี่ยง
+        free_offer_terms = [
+            "ฟรี",
+            "รับเลย",
+            "รับเงินฟรี",
+            "รับรางวัล",
+            "เครดิตฟรี",
+            "โบนัสฟรี",
+            "ชนะรางวัล",
+            "คุณได้รับรางวัล",
+            "congratulations",
+            "free",
+            "claim",
+            "won",
+            "prize",
+            "reward",
+        ]
+        matched_offers = [
+            term for term in free_offer_terms if term in value
         ]
 
-        has_url = bool(
-            re.search(
-                r"(https?://|www\.|"
-                r"[a-z0-9-]+\.(?:com|net|org|me|vip|bet|xyz)\b)",
-                value,
-            )
+        # ไม่จัดข้อความที่มี URL ทุกข้อความเป็น Spam โดยอัตโนมัติ
+        # ต้องมีคำเสี่ยงหรือรูปแบบชวนรับรางวัลร่วมด้วย
+        suspicious_offer_with_link = has_url and len(matched_offers) > 0
+
+        # คำเกี่ยวกับฝาก/ถอน/แตก ร่วมกับคำชวนรับโบนัสหรือคำเกี่ยวกับ PG
+        gambling_action_terms = [
+            "ฝาก",
+            "ถอน",
+            "แตก",
+            "pg",
+            "สล็อต",
+            "บาคาร่า",
+            "พนัน",
+        ]
+        matched_actions = [
+            term for term in gambling_action_terms if term in value
+        ]
+
+        suspicious_gambling_promotion = (
+            len(matched_actions) >= 2
+            and len(matched_offers) > 0
         )
 
-        # ใช้กฎเสริมกับคำเกี่ยวกับการพนันโดยตรง
-        if matched:
-            reason = (
-                "พบคำที่เกี่ยวข้องกับการพนันหรือโฆษณา: "
-                + ", ".join(matched[:4])
-            )
+        flag = bool(
+            matched
+            or suspicious_offer_with_link
+            or suspicious_gambling_promotion
+        )
 
-            if has_url:
-                reason += " และพบลิงก์"
-
+        if not flag:
             return {
-                "flag": True,
-                "reason": reason,
+                "flag": False,
+                "reason": None,
             }
 
+        reasons = []
+
+        if matched:
+            reasons.append(
+                "พบคำเสี่ยง: " + ", ".join(matched[:5])
+            )
+
+        if has_short_url:
+            reasons.append("พบลิงก์ย่อ")
+
+        elif has_url:
+            reasons.append("พบ URL")
+
+        if suspicious_offer_with_link:
+            reasons.append("พบคำชวนรับของฟรีหรือรางวัลร่วมกับลิงก์")
+
+        if suspicious_gambling_promotion:
+            reasons.append("พบรูปแบบโฆษณาที่เกี่ยวข้องกับการพนัน")
+
         return {
-            "flag": False,
-            "reason": None,
+            "flag": True,
+            "reason": " และ ".join(reasons),
         }
 
     def _apply_risk_rule(self, text, result):
@@ -165,6 +284,15 @@ class ModelService:
             result["class_id"] = 1
             result["rule_based"] = True
             result["detection_reason"] = rule["reason"]
+
+            # กฎเสริมเป็นการแจ้งเตือน ไม่ใช่ความน่าจะเป็นจากโมเดล
+            result["risk_rule_triggered"] = True
+
+        else:
+            result = dict(result)
+            result["rule_based"] = False
+            result["risk_rule_triggered"] = False
+            result.setdefault("detection_reason", None)
 
         return result
 
@@ -244,6 +372,7 @@ class ModelService:
             )
 
         if chosen == "all":
+            # เลือกผลจาก Deep Learning หากพร้อมใช้งาน
             selected = (
                 "Deep Learning"
                 if "Deep Learning" in available_results
@@ -263,8 +392,9 @@ class ModelService:
             "model_count_available": len(available_results),
             "note": (
                 "โมเดลพื้นฐานฝึกจากชุดข้อมูลภาษาอังกฤษ "
-                "กฎตรวจจับลิงก์และคำเสี่ยงเป็นเพียงตัวช่วย "
-                "ผลทำนายอาจไม่ถูกต้องทุกกรณี"
+                "มีการใช้กฎเสริมตรวจจับคำเสี่ยงและรูปแบบลิงก์ "
+                "ผลทำนายอาจไม่ถูกต้องทุกกรณี "
+                "และกฎเสริมอาจตรวจพบข้อความปกติผิดพลาดได้"
             ),
         }
 
@@ -299,14 +429,11 @@ class ModelService:
             }
 
         try:
-            # หลีกเลี่ยง model.predict(np.array([text]))
-            # ซึ่งอาจทำให้เกิด Invalid dtype: str1888
             input_tensor = tf.convert_to_tensor(
                 [str(text)],
                 dtype=tf.string,
             )
 
-            # เรียกโมเดลโดยตรงแทน model.predict()
             output = self.dl_model(
                 input_tensor,
                 training=False,
@@ -325,7 +452,6 @@ class ModelService:
             if not np.isfinite(score):
                 raise ValueError("ผลลัพธ์ของโมเดลไม่ใช่ตัวเลขปกติ")
 
-            # โมเดลนี้ใช้ sigmoid สำหรับจำแนก spam/ham
             score = min(max(score, 0.0), 1.0)
 
             pred = int(score >= 0.5)
@@ -333,7 +459,7 @@ class ModelService:
 
             return {
                 "available": True,
-                "label": "SPAM" if pred else "HAM",
+                "label": "SPAM" if pred == 1 else "HAM",
                 "class_id": pred,
                 "confidence": round(confidence * 100, 2),
                 "spam_probability": round(score * 100, 2),
