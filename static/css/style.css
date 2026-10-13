@@ -578,3 +578,87 @@ a:focus-visible {
     animation-duration: .01ms !important;
   }
 }
+
+/* History dashboard */
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.history-total {
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.09);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.history-table-wrapper {
+  border-radius: 12px;
+}
+
+.history-table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary, #e9e7f5);
+  --bs-table-border-color: rgba(167, 139, 250, 0.14);
+  --bs-table-hover-bg: rgba(139, 92, 246, 0.07);
+  --bs-table-hover-color: #fff;
+}
+
+.history-table thead th {
+  color: #b9a8f5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 14px 12px;
+  background: rgba(139, 92, 246, 0.08);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.25);
+}
+
+.history-table tbody td {
+  padding: 15px 12px;
+  vertical-align: middle;
+}
+
+.result-badge {
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+
+.version-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  color: #c4b5fd;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.history-note {
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.05);
+}
+
+@media (max-width: 576px) {
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .history-table thead th,
+  .history-table tbody td {
+    padding: 12px 10px;
+  }
+}
