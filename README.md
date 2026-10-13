@@ -1,3 +1,4 @@
+
 # SMS Spam Detector — Flask + ML + Deep Learning
 
 ## Features
@@ -57,3 +58,7 @@ Admin: http://127.0.0.1:5000/admin/login
 - Do not expose Flask's development server publicly. Use a production WSGI server and HTTPS for deployment.
 - Add CSRF protection and rate limiting before public internet deployment.
 - The sample admin login should be enhanced with CSRF protection and rate limiting before deployment.
+=======
+# sms-spam-detector
+SMS Spam Detector using Flask and Deep Learning
+>>>>>>> 91b9a12fcb939aad672e9ff42b04abe1e18e8804
