@@ -1,19 +1,167 @@
+```html
 {% extends "base.html" %}
+
 {% block title %}ประวัติและสถิติ | SMS Guard AI{% endblock %}
+
 {% block content %}
-<div class="page-heading"><span class="eyebrow">ACTIVITY</span><h1 class="h2 fw-bold mt-2">ประวัติและสถิติ</h1><p class="text-secondary">แสดงข้อมูลที่ระบบบันทึก โดยไม่แสดงเนื้อหา SMS</p></div>
+
+<!-- Page Header -->
+<div class="page-heading mb-4">
+  <span class="eyebrow">ACTIVITY MONITOR</span>
+  <h1 class="h2 fw-bold mt-2 mb-2">ประวัติและสถิติ</h1>
+  <p class="text-secondary mb-0">
+    ติดตามการใช้งานระบบตรวจจับ SMS โดยไม่จัดเก็บหรือแสดงเนื้อหาข้อความในหน้านี้
+  </p>
+</div>
+
+<!-- Statistics -->
 <div class="row g-3 mb-4">
-  <div class="col-6 col-lg-4"><div class="stat-card"><div class="stat-label">ตรวจทั้งหมด</div><div class="stat-value">{{ total }}</div></div></div>
-  <div class="col-6 col-lg-4"><div class="stat-card"><div class="stat-label">HAM</div><div class="stat-value text-success">{{ ham }}</div></div></div>
-  <div class="col-12 col-lg-4"><div class="stat-card"><div class="stat-label">SPAM</div><div class="stat-value text-danger">{{ spam }}</div></div></div>
+
+  <div class="col-12 col-md-4">
+    <div class="stat-card h-100">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="stat-label">ตรวจทั้งหมด</div>
+          <div class="stat-value">{{ total }}</div>
+          <div class="small text-secondary mt-1">ข้อความที่ระบบบันทึก</div>
+        </div>
+        <div class="stat-icon">📊</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-4">
+    <div class="stat-card h-100">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="stat-label">HAM</div>
+          <div class="stat-value text-success">{{ ham }}</div>
+          <div class="small text-secondary mt-1">ข้อความที่โมเดลจัดว่าไม่ใช่สแปม</div>
+        </div>
+        <div class="stat-icon">✓</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-4">
+    <div class="stat-card h-100">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="stat-label">SPAM</div>
+          <div class="stat-value text-danger">{{ spam }}</div>
+          <div class="small text-secondary mt-1">ข้อความที่โมเดลจัดว่าเป็นสแปม</div>
+        </div>
+        <div class="stat-icon">⚠</div>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<!-- History Table -->
 <div class="panel p-3 p-lg-4">
-  <h2 class="h5 mb-3">รายการล่าสุด (สูงสุด 100 รายการ)</h2>
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h2 class="h5 fw-bold mb-1">ประวัติการตรวจล่าสุด</h2>
+      <p class="small text-secondary mb-0">
+        แสดงรายการย้อนหลังสูงสุด 100 รายการ
+      </p>
+    </div>
+
+    <div class="history-total">
+      <span class="text-secondary small">จำนวนรายการ</span>
+      <span class="fw-bold ms-2">{{ recent|length }}</span>
+    </div>
+  </div>
+
   {% if recent %}
-  <div class="table-responsive"><table class="table align-middle"><thead><tr><th>เวลา (UTC)</th><th>ผล</th><th>ความมั่นใจ</th><th>โมเดล</th><th>เวอร์ชัน</th><th>ความยาว</th></tr></thead><tbody>
-  {% for row in recent %}<tr><td class="small">{{ row.created_at }}</td><td><span class="badge {{ 'text-bg-danger' if row.result == 'SPAM' else 'text-bg-success' }}">{{ row.result }}</span></td><td>{{ '%.2f'|format(row.confidence) }}%</td><td>{{ row.model_name }}</td><td>{{ row.model_version }}</td><td>{{ row.text_length }} ตัวอักษร</td></tr>{% endfor %}
-  </tbody></table></div>
-  {% else %}<div class="empty-state py-5"><div class="empty-icon">📊</div><p class="mb-0">ยังไม่มีประวัติการตรวจข้อความ</p></div>{% endif %}
-  <p class="small text-secondary mt-2 mb-0">หมายเหตุ: ประวัตินี้เป็นสถิติการใช้งาน ไม่ใช่ชุดข้อมูลสำหรับประเมินความแม่นยำ เพราะไม่มีป้ายกำกับคำตอบจริง</p>
+
+    <div class="table-responsive history-table-wrapper">
+      <table class="table align-middle history-table mb-0">
+
+        <thead>
+          <tr>
+            <th scope="col">เวลา (UTC)</th>
+            <th scope="col">ผลการตรวจ</th>
+            <th scope="col">ความมั่นใจ</th>
+            <th scope="col">โมเดล</th>
+            <th scope="col">เวอร์ชัน</th>
+            <th scope="col">ความยาว</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for row in recent %}
+          <tr>
+
+            <td class="small text-secondary text-nowrap">
+              {{ row.created_at }}
+            </td>
+
+            <td>
+              {% if row.result == 'SPAM' %}
+                <span class="badge text-bg-danger result-badge">
+                  ⚠ SPAM
+                </span>
+              {% else %}
+                <span class="badge text-bg-success result-badge">
+                  ✓ HAM
+                </span>
+              {% endif %}
+            </td>
+
+            <td class="confidence-cell">
+              <span class="fw-semibold">
+                {{ '%.2f'|format(row.confidence) }}%
+              </span>
+            </td>
+
+            <td>{{ row.model_name }}</td>
+
+            <td>
+              <span class="version-tag">{{ row.model_version }}</span>
+            </td>
+
+            <td class="text-nowrap">
+              {{ row.text_length }} ตัวอักษร
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+
+  {% else %}
+
+    <div class="empty-state py-5 text-center">
+      <div class="empty-icon mb-3">📊</div>
+      <h3 class="h5 fw-semibold">ยังไม่มีประวัติการตรวจ</h3>
+      <p class="text-secondary mb-4">
+        เมื่อคุณเริ่มตรวจข้อความ รายการจะแสดงในหน้านี้
+      </p>
+      <a href="{{ url_for('index') }}" class="btn btn-primary">
+        ไปหน้าตรวจข้อความ
+      </a>
+    </div>
+
+  {% endif %}
+
+  <!-- Disclaimer -->
+  <div class="history-note mt-4 p-3">
+    <div class="d-flex gap-2 align-items-start">
+      <span aria-hidden="true">ⓘ</span>
+      <p class="small text-secondary mb-0">
+        หมายเหตุ: ข้อมูลนี้เป็นสถิติการใช้งานและผลทำนายของโมเดล
+        ไม่ใช่ผลประเมินความแม่นยำจากคำตอบจริง เนื่องจากไม่มีป้ายกำกับ
+        (Ground Truth) สำหรับเปรียบเทียบ
+      </p>
+    </div>
+  </div>
+
 </div>
+
 {% endblock %}
+```
