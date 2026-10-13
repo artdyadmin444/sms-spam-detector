@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}รายงานผลการทดลอง | SMS Guard AI{% endblock %}
+{% block content %}
+<div class="page-heading"><span class="eyebrow">MODEL EVALUATION</span><h1 class="h2 fw-bold mt-2">รายงานผลการทดลอง</h1><p class="text-secondary">คะแนนจะแสดงเมื่อมีการประเมินจากชุดข้อมูลที่ระบุเท่านั้น</p></div>
+{% if metrics %}
+<div class="alert alert-info">รายการด้านล่างมาจากการประเมินจริงผ่านระบบ Admin โดยบันทึก fingerprint ของชุดข้อมูลเพื่อช่วยตรวจสอบชุดข้อมูลที่ใช้</div>
+<div class="panel p-3 p-lg-4 table-responsive"><table class="table align-middle"><thead><tr><th>โมเดล</th><th>ชุดทดสอบ</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>Fingerprint</th><th>เวลา</th></tr></thead><tbody>
+{% for m in metrics %}<tr><td>{{ m.model_name }}<div class="small text-secondary">{{ m.model_version }}</div></td><td>{{ m.test_size }}</td><td>{{ '%.2f'|format(m.accuracy*100) }}%</td><td>{{ '%.2f'|format(m.precision*100) }}%</td><td>{{ '%.2f'|format(m.recall*100) }}%</td><td>{{ '%.2f'|format(m.f1*100) }}%</td><td><code>{{ m.dataset_fingerprint[:12] }}</code></td><td class="small">{{ m.evaluated_at }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}
+<div class="panel p-5 text-center"><div class="empty-icon">🧪</div><h2 class="h5">ยังไม่มีคะแนนที่ผ่านการตรวจสอบ</h2><p class="text-secondary">เข้าสู่ระบบ Admin แล้วกด “ประเมินและบันทึกโมเดลพื้นฐาน” หลังวาง dataset ในโฟลเดอร์ data</p><a class="btn btn-primary" href="{{ url_for('admin_login') }}">ไปหน้า Admin</a></div>
+{% endif %}
+<div class="panel p-4 mt-4"><h2 class="h5">ข้อควรระวังในการตีความ</h2><ul class="mb-0"><li>Accuracy เพียงอย่างเดียวไม่เพียงพอ ควรพิจารณา Precision, Recall และ F1-score</li><li>ชุดทดสอบต้องแยกจากชุดฝึก และใช้ชุดเดียวกันเมื่อต้องการเปรียบเทียบโมเดล</li><li>คะแนน Deep Learning จะไม่แสดงจนกว่าจะประเมินโมเดลที่ export มาบนข้อความทดสอบชุดเดียวกันและ preprocessing ตรงกัน</li></ul></div>
+{% endblock %}

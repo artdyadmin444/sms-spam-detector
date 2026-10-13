@@ -1,0 +1,10 @@
+{
+  "model": "deep_learning.keras",
+  "input": "raw SMS string",
+  "label_map": {
+    "0": "HAM",
+    "1": "SPAM"
+  },
+  "threshold": 0.5,
+  "dataset_note": "UCI SMS Spam Collection is mainly English. Thai performance is not guaranteed."
+}

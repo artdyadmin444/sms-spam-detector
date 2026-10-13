@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}ประวัติและสถิติ | SMS Guard AI{% endblock %}
+{% block content %}
+<div class="page-heading"><span class="eyebrow">ACTIVITY</span><h1 class="h2 fw-bold mt-2">ประวัติและสถิติ</h1><p class="text-secondary">แสดงข้อมูลที่ระบบบันทึก โดยไม่แสดงเนื้อหา SMS</p></div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-4"><div class="stat-card"><div class="stat-label">ตรวจทั้งหมด</div><div class="stat-value">{{ total }}</div></div></div>
+  <div class="col-6 col-lg-4"><div class="stat-card"><div class="stat-label">HAM</div><div class="stat-value text-success">{{ ham }}</div></div></div>
+  <div class="col-12 col-lg-4"><div class="stat-card"><div class="stat-label">SPAM</div><div class="stat-value text-danger">{{ spam }}</div></div></div>
+</div>
+<div class="panel p-3 p-lg-4">
+  <h2 class="h5 mb-3">รายการล่าสุด (สูงสุด 100 รายการ)</h2>
+  {% if recent %}
+  <div class="table-responsive"><table class="table align-middle"><thead><tr><th>เวลา (UTC)</th><th>ผล</th><th>ความมั่นใจ</th><th>โมเดล</th><th>เวอร์ชัน</th><th>ความยาว</th></tr></thead><tbody>
+  {% for row in recent %}<tr><td class="small">{{ row.created_at }}</td><td><span class="badge {{ 'text-bg-danger' if row.result == 'SPAM' else 'text-bg-success' }}">{{ row.result }}</span></td><td>{{ '%.2f'|format(row.confidence) }}%</td><td>{{ row.model_name }}</td><td>{{ row.model_version }}</td><td>{{ row.text_length }} ตัวอักษร</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state py-5"><div class="empty-icon">📊</div><p class="mb-0">ยังไม่มีประวัติการตรวจข้อความ</p></div>{% endif %}
+  <p class="small text-secondary mt-2 mb-0">หมายเหตุ: ประวัตินี้เป็นสถิติการใช้งาน ไม่ใช่ชุดข้อมูลสำหรับประเมินความแม่นยำ เพราะไม่มีป้ายกำกับคำตอบจริง</p>
+</div>
+{% endblock %}

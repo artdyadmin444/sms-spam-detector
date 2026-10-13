@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}ตรวจจับ SMS Spam | SMS Guard AI{% endblock %}
+{% block content %}
+<section class="hero p-4 p-lg-5 mb-4">
+  <span class="eyebrow">AI TEXT CLASSIFICATION</span>
+  <h1 class="display-5 fw-bold mt-2">ตรวจจับข้อความ SMS Spam</h1>
+  <p class="lead mb-0">วางข้อความเพื่อประเมินว่าเป็นข้อความปกติหรือข้อความสแปม พร้อมเปรียบเทียบโมเดลได้</p>
+</section>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <section class="panel p-4 h-100">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h4 mb-0">ข้อความที่ต้องการตรวจสอบ</h2>
+        <span class="badge text-bg-light" id="charCount">0 / 5000</span>
+      </div>
+      <textarea id="smsText" class="form-control sms-input" maxlength="5000" placeholder="ตัวอย่าง: Congratulations! You have won a free prize. Click here now!" aria-label="ข้อความ SMS"></textarea>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <button class="btn btn-primary px-4" id="checkBtn"><span class="btn-label">ตรวจสอบข้อความ</span></button>
+        <button class="btn btn-outline-secondary" id="sampleSpam">ตัวอย่าง SPAM</button>
+        <button class="btn btn-outline-secondary" id="sampleHam">ตัวอย่าง HAM</button>
+        <button class="btn btn-link text-secondary" id="clearBtn">ล้างข้อความ</button>
+      </div>
+      <div class="form-text mt-3">เพื่อความเป็นส่วนตัว ระบบไม่บันทึกเนื้อหาข้อความลงฐานข้อมูลประวัติ</div>
+      <div class="alert alert-danger mt-3 d-none" id="errorBox" role="alert"></div>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="panel p-4 h-100">
+      <h2 class="h4 mb-3">ผลการตรวจจับ</h2>
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">✉️</div>
+        <p class="fw-semibold mb-1">รอข้อความจากคุณ</p>
+        <p class="text-secondary small mb-0">ผลการตรวจจับจะแสดงที่นี่</p>
+      </div>
+      <div id="resultState" class="d-none">
+        <div class="result-pill mb-3" id="resultLabel">—</div>
+        <div class="d-flex align-items-end justify-content-between">
+          <span class="text-secondary">ความมั่นใจของโมเดล</span>
+          <strong class="fs-3" id="confidence">—</strong>
+        </div>
+        <div class="progress mt-2 mb-3" role="progressbar" aria-label="ความมั่นใจ"><div class="progress-bar" id="confidenceBar" style="width:0%"></div></div>
+        <p class="small text-secondary" id="resultNote"></p>
+        <div class="small"><span class="text-secondary">โมเดลหลัก:</span> <strong id="selectedModel">—</strong></div>
+        <div class="small"><span class="text-secondary">เวอร์ชัน:</span> <span id="modelVersion">—</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+<section class="panel p-4 mt-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div><h2 class="h4 mb-1">เปรียบเทียบโมเดลทั้ง 3 แบบ</h2><p class="text-secondary mb-0 small">ผลทำนายของข้อความเดียวกัน ไม่ใช่คะแนนประเมินจากชุดทดสอบ</p></div>
+    <button class="btn btn-outline-primary btn-sm" id="compareBtn">เปรียบเทียบข้อความนี้</button>
+  </div>
+  <div class="row g-3" id="modelCards">
+    {% for model in models %}
+    <div class="col-md-4">
+      <div class="model-card h-100">
+        <div class="d-flex justify-content-between gap-2"><h3 class="h6">{{ model.name }}</h3><span class="status-dot {{ 'online' if model.available else 'offline' }}"></span></div>
+        <p class="small text-secondary mb-0">{{ 'พร้อมใช้งาน' if model.available else 'ยังไม่ได้ติดตั้งไฟล์โมเดล' }}</p>
+        <div class="model-result mt-3" id="model-{{ loop.index0 }}">ยังไม่มีผล</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/app.js') }}"></script>{% endblock %}
