@@ -1,354 +1,437 @@
 
-/* =====================================
-   SMS GUARD AI - PROFESSIONAL DARK THEME
-   ===================================== */
+/* =========================================
+   SMS GUARD AI — DARK PURPLE THEME
+   Theme only: keep existing app functionality
+========================================= */
 
 :root {
-    color-scheme: dark;
-
-    --bg-main: #09090d;
-    --bg-panel: #111117;
-    --bg-card: #16161f;
-    --bg-hover: #20202b;
-
-    --border-color: #292936;
-
-    --text-main: #f4f4f8;
-    --text-muted: #9999ad;
-
-    --accent: #8b5cf6;
-    --accent-hover: #7c3aed;
-    --accent-soft: rgba(139, 92, 246, 0.14);
-
-    --success: #34d399;
-    --danger: #fb7185;
-    --warning: #fbbf24;
-
-    --radius: 16px;
-    --shadow: 0 12px 36px rgba(0, 0, 0, 0.24);
+  --bg: #0b0a10;
+  --bg-soft: #100e18;
+  --surface: #17151f;
+  --surface-hover: #1e1a2a;
+  --border: #302a3c;
+  --purple: #8957f5;
+  --purple-hover: #a17aff;
+  --purple-soft: #281b42;
+  --text: #f7f5ff;
+  --text-muted: #a6a0bb;
+  --success: #43d9a3;
+  --danger: #ff6b81;
+  --radius: 18px;
 }
 
-* {
-    box-sizing: border-box;
-}
+/* 1. พื้นหลังและตัวอักษร */
 
 html {
-    scroll-behavior: smooth;
+  min-height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
-    margin: 0;
-    min-height: 100vh;
-    background:
-        radial-gradient(
-            ellipse at 50% -20%,
-            rgba(139, 92, 246, 0.12),
-            transparent 55%
-        ),
-        var(--bg-main);
-    color: var(--text-main);
-    font-family: Inter, "Noto Sans Thai", "Segoe UI", sans-serif;
-    line-height: 1.65;
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(93, 53, 163, 0.12),
+      transparent 55%
+    ),
+    var(--bg) !important;
+  color: var(--text);
+  font-family: "Inter", "Noto Sans Thai", Tahoma, sans-serif;
+  line-height: 1.7;
 }
 
-/* Headings */
-
-h1, h2, h3, h4 {
-    color: var(--text-main);
-    font-weight: 700;
-    letter-spacing: -0.025em;
+body,
+input,
+textarea,
+select,
+button {
+  font-family: "Inter", "Noto Sans Thai", Tahoma, sans-serif;
 }
 
-h1 {
-    font-size: clamp(1.8rem, 4vw, 2.7rem);
-}
-
-h2 {
-    font-size: 1.5rem;
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 p {
-    color: var(--text-muted);
+  color: var(--text-muted);
 }
 
-/* Links */
-
 a {
-    color: #b8a1ff;
-    text-decoration: none;
-    transition: color 0.2s ease;
+  color: #b49aff;
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
 a:hover {
-    color: #d2c3ff;
+  color: var(--purple-hover);
 }
 
-/* Navigation and header */
+/* 2. ส่วนหัวและเมนู */
 
-nav,
-.navbar,
+header,
+nav {
+  color: var(--text);
+}
+
 header {
-    background: rgba(13, 13, 19, 0.92);
-    border-bottom: 1px solid var(--border-color);
-    backdrop-filter: blur(16px);
+  background: rgba(12, 10, 17, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+nav {
+  background: transparent;
 }
 
 nav a,
-.navbar a {
-    color: var(--text-muted);
-    transition: 0.2s ease;
+header a {
+  transition: color 0.2s ease;
 }
 
 nav a:hover,
-.navbar a:hover,
-nav a.active,
-.navbar a.active {
-    color: var(--text-main);
+header a:hover {
+  color: var(--purple-hover);
 }
 
-/* Main containers */
+/* รองรับชื่อคลาส Navbar ที่ใช้กันทั่วไป */
+
+.navbar {
+  background: rgba(12, 10, 17, 0.96) !important;
+  border-bottom: 1px solid var(--border);
+}
+
+.navbar-brand,
+.navbar .nav-link {
+  color: var(--text) !important;
+}
+
+.navbar .nav-link:hover {
+  color: var(--purple-hover) !important;
+}
+
+/* 3. หัวข้อหลัก */
 
 main,
 .container,
-.content,
-.page-content {
-    width: min(1200px, 100%);
-    margin-left: auto;
-    margin-right: auto;
-    padding: 28px 24px;
+.container-fluid {
+  color: var(--text);
 }
 
-/* Cards and panels */
+main {
+  min-height: 70vh;
+}
+
+.hero,
+.page-header {
+  padding-top: 55px;
+  padding-bottom: 35px;
+}
+
+.hero h1,
+.page-header h1 {
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  letter-spacing: -0.7px;
+}
+
+.hero p,
+.page-header p {
+  color: var(--text-muted);
+}
+
+/* 4. กล่องเนื้อหาและการ์ด */
 
 .card,
 .panel,
-.stat-card,
 .result-card,
-.metric-card,
-section.card {
-    background: linear-gradient(
-        145deg,
-        rgba(26, 26, 37, 0.98),
-        rgba(17, 17, 24, 0.98)
-    );
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
+.stat-card,
+.model-card,
+[class*="card"],
+[class*="panel"] {
+  color: var(--text);
+  background: linear-gradient(
+    145deg,
+    #191722 0%,
+    #121119 100%
+  );
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.14);
 }
 
-.card:hover,
-.stat-card:hover,
-.metric-card:hover {
-    border-color: #45405f;
+.card-header,
+.card-footer {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.025);
+  border-color: var(--border);
 }
 
-/* Forms */
+.card-body {
+  color: var(--text);
+}
 
-input,
+/* 5. ช่องกรอกข้อความ */
+
 textarea,
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
 select {
-    width: 100%;
-    padding: 13px 15px;
-    background: #0d0d13;
-    color: var(--text-main);
-    border: 1px solid #333342;
-    border-radius: 10px;
-    font: inherit;
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 13px 15px;
+  color: #29243a;
+  background: #fff;
+  border: 1px solid #d9d5e2;
+  border-radius: 9px;
+  font-size: 15px;
+  line-height: 1.6;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 textarea {
-    min-height: 150px;
-    resize: vertical;
+  min-height: 100px;
+  resize: vertical;
 }
 
-input::placeholder,
-textarea::placeholder {
-    color: #77778b;
+textarea::placeholder,
+input::placeholder {
+  color: #777185;
+  opacity: 1;
 }
 
-input:focus,
 textarea:focus,
+input:focus,
 select:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(137, 87, 245, 0.2);
 }
 
-/* Buttons */
+/* 6. ปุ่มทั้งหมด */
 
 button,
 .btn,
-.button,
-input[type="submit"] {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 11px 20px;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    background: var(--accent);
-    color: white;
-    font: inherit;
-    font-weight: 650;
-    cursor: pointer;
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+input[type="submit"],
+input[type="button"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  color: #fff;
+  background: var(--purple);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 button:hover,
 .btn:hover,
-.button:hover,
-input[type="submit"]:hover {
-    background: var(--accent-hover);
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 5px 18px rgba(139, 92, 246, 0.22);
+input[type="submit"]:hover,
+input[type="button"]:hover {
+  color: #fff;
+  background: var(--purple-hover);
+  box-shadow: 0 7px 20px rgba(137, 87, 245, 0.22);
+  transform: translateY(-1px);
 }
 
-button:focus-visible,
-a:focus-visible {
-    outline: 2px solid #b8a1ff;
-    outline-offset: 3px;
+button:active,
+.btn:active {
+  transform: translateY(0);
 }
 
-/* Tables */
+button:disabled,
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* 7. ตารางและประวัติการตรวจสอบ */
 
 table {
-    width: 100%;
-    border-collapse: collapse;
-    color: var(--text-main);
-    background: var(--bg-panel);
-    border-radius: 12px;
-    overflow: hidden;
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--text);
+  background: transparent;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
 }
 
 th {
-    background: #1d1b29;
-    color: #c4b5fd;
-    text-align: left;
-    font-weight: 650;
+  color: #c4b1ff;
+  font-weight: 700;
+  background: rgba(137, 87, 245, 0.08);
 }
 
-th, td {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border-color);
+tr:hover td {
+  background: rgba(137, 87, 245, 0.04);
 }
 
-tbody tr:hover {
-    background: var(--bg-hover);
-}
-
-/* Status labels */
+/* 8. ผลลัพธ์ Spam / Ham */
 
 .badge,
-.status,
-.label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 11px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 700;
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .spam,
-.status-spam,
-.badge-spam {
-    color: #fda4af;
-    background: rgba(244, 63, 94, 0.13);
-    border: 1px solid rgba(244, 63, 94, 0.28);
+.result-spam {
+  color: #ff9eaa;
+  background: rgba(255, 107, 129, 0.12);
+  border: 1px solid rgba(255, 107, 129, 0.25);
 }
 
 .ham,
-.status-ham,
-.badge-ham {
-    color: #6ee7b7;
-    background: rgba(16, 185, 129, 0.12);
-    border: 1px solid rgba(16, 185, 129, 0.25);
+.result-ham {
+  color: #72e7bc;
+  background: rgba(67, 217, 163, 0.12);
+  border: 1px solid rgba(67, 217, 163, 0.25);
 }
 
-/* Dividers and secondary text */
+/* 9. ข้อความแจ้งเตือนและสถานะ */
+
+.alert {
+  padding: 14px 16px;
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.alert-success {
+  color: #72e7bc;
+  background: rgba(67, 217, 163, 0.08);
+  border-color: rgba(67, 217, 163, 0.25);
+}
+
+.alert-danger,
+.alert-error {
+  color: #ff9eaa;
+  background: rgba(255, 107, 129, 0.08);
+  border-color: rgba(255, 107, 129, 0.25);
+}
+
+/* 10. ตัวคั่นและแถบเลื่อน */
 
 hr {
-    border: 0;
-    border-top: 1px solid var(--border-color);
-    margin: 24px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
 }
-
-small,
-.text-muted,
-.muted {
-    color: var(--text-muted);
-}
-
-/* Footer */
-
-footer {
-    margin-top: 48px;
-    padding: 24px;
-    border-top: 1px solid var(--border-color);
-    color: var(--text-muted);
-    text-align: center;
-}
-
-/* Scrollbar */
 
 ::-webkit-scrollbar {
-    width: 9px;
-    height: 9px;
+  width: 9px;
+  height: 9px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--bg-main);
+  background: var(--bg);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #3a394a;
-    border-radius: 20px;
+  background: #423653;
+  border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #60577c;
+  background: var(--purple);
 }
 
-/* Responsive layout */
+/* 11. รองรับ Bootstrap และคลาสสีพื้นฐาน */
+
+.bg-white,
+.bg-light {
+  background-color: var(--surface) !important;
+}
+
+.text-dark {
+  color: var(--text) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.border {
+  border-color: var(--border) !important;
+}
+
+/* 12. รองรับมือถือ */
 
 @media (max-width: 768px) {
-    main,
-    .container,
-    .content,
-    .page-content {
-        padding: 20px 14px;
-    }
+  .container,
+  .container-fluid {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 
-    .card,
-    .panel,
-    .stat-card,
-    .result-card,
-    .metric-card {
-        padding: 17px;
-    }
+  .hero,
+  .page-header {
+    padding-top: 30px;
+    padding-bottom: 24px;
+  }
 
-    table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
+  .hero h1,
+  .page-header h1 {
+    font-size: 2rem;
+  }
 
-    button,
-    .btn,
-    .button {
-        max-width: 100%;
-    }
+  .card,
+  .panel,
+  .result-card,
+  .stat-card,
+  .model-card,
+  [class*="card"],
+  [class*="panel"] {
+    border-radius: 14px;
+  }
+
+  button,
+  .btn,
+  input[type="submit"] {
+    max-width: 100%;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* 13. ลดเอฟเฟกต์สำหรับผู้ที่ตั้งค่าลดการเคลื่อนไหว */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
