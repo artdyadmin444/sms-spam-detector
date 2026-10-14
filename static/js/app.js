@@ -1,4 +1,4 @@
-```javascript
+
 const smsText = document.getElementById("smsText");
 const charCount = document.getElementById("charCount");
 const checkBtn = document.getElementById("checkBtn");
@@ -257,4 +257,4 @@ function showError(message) {
   errorBox.textContent = message;
   errorBox.classList.remove("d-none");
 }
-```
+
