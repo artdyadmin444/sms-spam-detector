@@ -1,6 +1,4 @@
-
 import os
-import json
 import sqlite3
 import secrets
 import hashlib
@@ -233,7 +231,7 @@ def api_predict():
             f"chars={len(text)}",
         )
 
-    # ส่งคำเตือนแยกจากผลทำนาย เพื่อให้ JavaScript นำไปแสดง
+    # สร้างข้อมูลคำเตือนจากผลของโมเดลที่ถูกเลือก
     warning = {
         "show": False,
         "category": None,
@@ -245,21 +243,25 @@ def api_predict():
     }
 
     if selected_result:
-        if selected_result.get("warning_message"):
+        warning_message = selected_result.get("warning_message")
+
+        if warning_message:
             warning = {
                 "show": True,
                 "category": selected_result.get(
                     "warning_category"
                 ),
-                "title": selected_result.get("warning_title"),
-                "message": selected_result.get(
-                    "warning_message"
+                "title": selected_result.get(
+                    "warning_title"
                 ),
+                "message": warning_message,
                 "reason": selected_result.get(
                     "detection_reason"
                 ),
-                "is_gambling": selected_result.get(
-                    "is_gambling_warning", False
+                "is_gambling": bool(
+                    selected_result.get(
+                        "is_gambling_warning", False
+                    )
                 ),
                 "safety_steps": selected_result.get(
                     "safety_steps", []
@@ -387,7 +389,10 @@ def admin_login():
             next_url = request.args.get("next", "")
 
             # ป้องกันการ redirect ไปยังเว็บไซต์ภายนอก
-            if not next_url.startswith("/") or next_url.startswith("//"):
+            if (
+                not next_url.startswith("/")
+                or next_url.startswith("//")
+            ):
                 next_url = url_for("admin_dashboard")
 
             return redirect(
