@@ -26,7 +26,7 @@ from sklearn.linear_model import LogisticRegression
 
 
 class ModelService:
-    """โหลดโมเดลตรวจจับ SMS Spam และตรวจสอบข้อความเสี่ยง"""
+    """ตรวจจับ SMS Spam พร้อมคำเตือนด้านความปลอดภัย"""
 
     def __init__(self, base_dir):
         self.base_dir = Path(base_dir)
@@ -40,46 +40,40 @@ class ModelService:
         self._load_artifacts()
 
     def _load_artifacts(self):
-        """โหลดโมเดลที่บันทึกไว้"""
         self.model_dir.mkdir(parents=True, exist_ok=True)
 
-        nb_path = self.model_dir / "naive_bayes.joblib"
-        lr_path = self.model_dir / "logistic_regression.joblib"
+        files = {
+            "Naive Bayes": self.model_dir / "naive_bayes.joblib",
+            "Logistic Regression": self.model_dir / "logistic_regression.joblib",
+        }
+
+        for name, path in files.items():
+            if path.exists():
+                try:
+                    self.cache[name] = joblib.load(path)
+                except Exception as exc:
+                    print(f"Could not load {name}: {exc}")
+
         dl_path = self.model_dir / "deep_learning.keras"
-        dl_vec_path = self.model_dir / "text_vectorizer.json"
-
-        if nb_path.exists():
-            try:
-                self.cache["Naive Bayes"] = joblib.load(nb_path)
-            except Exception as exc:
-                print(f"Could not load Naive Bayes model: {exc}")
-
-        if lr_path.exists():
-            try:
-                self.cache["Logistic Regression"] = joblib.load(lr_path)
-            except Exception as exc:
-                print(f"Could not load Logistic Regression model: {exc}")
-
         if dl_path.exists():
             try:
                 self.dl_model = tf.keras.models.load_model(
-                    str(dl_path),
-                    compile=False,
+                    str(dl_path), compile=False
                 )
                 print("Deep Learning model loaded successfully.")
             except Exception as exc:
                 self.dl_model = None
                 print(f"Could not load Deep Learning model: {exc}")
 
-        if dl_vec_path.exists():
+        vectorizer_path = self.model_dir / "text_vectorizer.json"
+        if vectorizer_path.exists():
             try:
-                with open(dl_vec_path, "r", encoding="utf-8") as f:
+                with open(vectorizer_path, "r", encoding="utf-8") as f:
                     self.dl_vectorizer = json.load(f)
             except Exception as exc:
                 print(f"Could not load vectorizer metadata: {exc}")
 
     def available_models(self):
-        """ส่งรายชื่อโมเดลและสถานะความพร้อมใช้งาน"""
         names = [
             "Naive Bayes",
             "Logistic Regression",
@@ -90,9 +84,9 @@ class ModelService:
             {
                 "name": name,
                 "available": (
-                    name in self.cache
-                    if name != "Deep Learning"
-                    else self.dl_model is not None
+                    self.dl_model is not None
+                    if name == "Deep Learning"
+                    else name in self.cache
                 ),
             }
             for name in names
@@ -100,89 +94,115 @@ class ModelService:
 
     @staticmethod
     def _normalize_for_rules(text):
-        """
-        ทำข้อความให้อยู่ในรูปแบบที่ตรวจจับคำได้ง่ายขึ้น
-        เช่น P G -> pg และลบช่องว่างระหว่างอักษรไทย
-        """
+        """ปรับข้อความก่อนตรวจจับคำเสี่ยง"""
         value = unicodedata.normalize("NFKC", str(text or "")).lower()
 
-        # ลบ zero-width characters ที่อาจแทรกเพื่อหลบตัวกรอง
+        # ลบอักขระแฝง
         value = re.sub(r"[\u200b-\u200f\u2060\ufeff]", "", value)
 
-        # รวมตัวอักษรภาษาอังกฤษที่ถูกเว้นวรรคทีละตัว เช่น P G, p g
+        # รวมตัวอักษรอังกฤษที่เว้นวรรค เช่น P G -> pg
         value = re.sub(
             r"(?<![a-z])(?:[a-z]\s+){1,}[a-z](?![a-z])",
             lambda m: re.sub(r"\s+", "", m.group(0)),
             value,
         )
 
-        # รวมอักษรไทยที่ถูกเว้นวรรคแทรก เช่น ปล่ อย
-        # ใช้เฉพาะช่องว่างระหว่างอักษรไทย ไม่ลบช่องว่างทุกตำแหน่ง
+        # รวมอักษรไทยที่มีช่องว่างแทรก เช่น ปล่ อย
         value = re.sub(
             r"(?<=[\u0E00-\u0E7F])\s+(?=[\u0E00-\u0E7F])",
             "",
             value,
         )
 
-        # รวมรูปแบบตัวเลขที่แทรกช่องว่าง เช่น 5 0
+        # รวมตัวเลขที่ถูกเว้นวรรค
         value = re.sub(r"(?<=\d)\s+(?=\d)", "", value)
 
         return value
 
     @staticmethod
     def _risk_rule(text):
-        """ตรวจจับข้อความเสี่ยง เช่น พนัน เครดิตฟรี และข้อความชวนฝากถอน"""
-        original = str(text or "")
-        value = ModelService._normalize_for_rules(original)
+        """ตรวจจับการพนัน การหลอกล่อให้โอนเงิน และลิงก์น่าสงสัย"""
+        value = ModelService._normalize_for_rules(text)
 
-        # คำเกี่ยวกับการพนันและเครดิตฟรี
-        risk_terms = [
+        gambling_terms = [
+            "เว็บพนัน",
             "สล็อต",
             "คาสิโน",
-            "พนัน",
             "บาคาร่า",
-            "เว็บพนัน",
-            "เครดิตฟรี",
-            "สล็อตเว็บตรง",
-            "เล่นสล็อต",
-            "ฝากถอน",
-            "ถอนเงินไม่อั้น",
-            "ถอนง่าย",
-            "แตกง่าย",
-            "ปล่อยแตก",
-            "เครดิตฟรี",
-            "รับเครดิตฟรี",
-            "รับเงินฟรี",
-            "เครดิตฟรี50",
-            "เครดิตฟรี100",
-            "โบนัสฟรี",
-            "โบนัสสมาชิกใหม่",
-            "สมัครรับโบนัส",
+            "พนัน",
             "pgslot",
-            "pg สล็อต",
+            "เล่นสล็อต",
+            "สล็อตเว็บตรง",
             "jackpot",
             "casino",
             "gambling",
             "betting",
-            "free credit",
-            "free bonus",
-            "claim your prize",
-            "you have won",
         ]
 
-        matched = [term for term in risk_terms if term in value]
+        gambling_actions = [
+            "ฝากถอน",
+            "ถอนเงินไม่อั้น",
+            "ถอนง่าย",
+            "ปล่อยแตก",
+            "แตกง่าย",
+            "เครดิตฟรี",
+            "โบนัสสมาชิกใหม่",
+            "สมัครรับโบนัส",
+        ]
 
-        # URL ทั่วไป รวมถึงลิงก์ย่อที่มักใช้ในข้อความโฆษณา
+        scam_offer_terms = [
+            "รับเงินฟรี",
+            "รับเครดิตฟรี",
+            "เครดิตฟรี",
+            "โบนัสฟรี",
+            "โบนัสฟรี",
+            "รับโบนัส",
+            "รับรางวัล",
+            "ชนะรางวัล",
+            "คุณได้รับรางวัล",
+            "claim your prize",
+            "you have won",
+            "free bonus",
+            "free credit",
+        ]
+
+        income_terms = [
+            "เลขเด็ด",
+            "ปลดหนี้",
+            "ทุนหมุนเวียน",
+            "รายได้เสริม",
+            "ไม่จำกัดอายุ",
+            "ทำง่ายผ่านมือถือ",
+            "สนใจคลิก",
+            "รับประกันรายได้",
+            "หารายได้เสริม",
+            "ลงทุนรับผลตอบแทน",
+        ]
+
+        matched_gambling = [
+            term for term in gambling_terms if term in value
+        ]
+        matched_actions = [
+            term for term in gambling_actions if term in value
+        ]
+        matched_offers = [
+            term for term in scam_offer_terms if term in value
+        ]
+        matched_income = [
+            term for term in income_terms if term in value
+        ]
+
+        # ตรวจ URL รวมถึงโดเมนและลิงก์ย่อ
         url_pattern = (
             r"(?:https?://|www\.)\S+"
             r"|(?:[a-z0-9-]+\.)"
             r"(?:com|net|org|me|vip|bet|xyz|cc|co|ly|top|site|info)"
-            r"(?:/[^\s]*)?"
+            r"(?:/\S*)?"
         )
         urls = re.findall(url_pattern, value, flags=re.IGNORECASE)
         has_url = bool(urls)
 
-        shortener_domains = (
+        shortener_domains = [
             "cutt.ly",
             "bit.ly",
             "tinyurl.com",
@@ -191,113 +211,144 @@ class ModelService:
             "rebrand.ly",
             "rb.gy",
             "shorturl.at",
-        )
+        ]
         has_short_url = any(domain in value for domain in shortener_domains)
 
-        # คำชวนรับของฟรี/เงินรางวัลร่วมกับลิงก์เป็นสัญญาณเสี่ยง
-        free_offer_terms = [
-            "ฟรี",
-            "รับเลย",
-            "รับเงินฟรี",
-            "รับรางวัล",
-            "เครดิตฟรี",
-            "โบนัสฟรี",
-            "ชนะรางวัล",
-            "คุณได้รับรางวัล",
-            "congratulations",
-            "free",
-            "claim",
-            "won",
-            "prize",
-            "reward",
-        ]
-        matched_offers = [
-            term for term in free_offer_terms if term in value
-        ]
-
-        # ไม่จัดข้อความที่มี URL ทุกข้อความเป็น Spam โดยอัตโนมัติ
-        # ต้องมีคำเสี่ยงหรือรูปแบบชวนรับรางวัลร่วมด้วย
-        suspicious_offer_with_link = has_url and len(matched_offers) > 0
-
-        # คำเกี่ยวกับฝาก/ถอน/แตก ร่วมกับคำชวนรับโบนัสหรือคำเกี่ยวกับ PG
-        gambling_action_terms = [
-            "ฝาก",
-            "ถอน",
-            "แตก",
-            "pg",
-            "สล็อต",
-            "บาคาร่า",
-            "พนัน",
-        ]
-        matched_actions = [
-            term for term in gambling_action_terms if term in value
-        ]
-
-        suspicious_gambling_promotion = (
-            len(matched_actions) >= 2
-            and len(matched_offers) > 0
+        # เงื่อนไขตรวจจับแบบผสม ลดการตัดสินจากคำเดี่ยว ๆ
+        gambling_promotion = (
+            bool(matched_gambling)
+            and (
+                bool(matched_actions)
+                or bool(matched_offers)
+                or has_url
+            )
         )
 
-        flag = bool(
-            matched
-            or suspicious_offer_with_link
-            or suspicious_gambling_promotion
+        suspicious_bonus_link = has_url and bool(matched_offers)
+
+        suspicious_income = (
+            len(matched_income) >= 2
+            and (
+                has_url
+                or "ทักมาคุยกับแอดมิน" in value
+                or "สนใจคลิก" in value
+            )
         )
 
-        if not flag:
-            return {
-                "flag": False,
-                "reason": None,
-            }
+        # กรณีคำเกี่ยวกับการพนันร่วมกับการชักชวนฝากหรือถอน
+        gambling_action_promotion = (
+            bool(matched_gambling) and bool(matched_actions)
+        )
+
+        is_gambling = bool(
+            gambling_promotion or gambling_action_promotion
+        )
+
+        is_suspicious = bool(
+            is_gambling
+            or suspicious_bonus_link
+            or suspicious_income
+        )
 
         reasons = []
 
-        if matched:
+        if matched_gambling:
             reasons.append(
-                "พบคำเสี่ยง: " + ", ".join(matched[:5])
+                "พบคำเกี่ยวกับการพนัน: "
+                + ", ".join(matched_gambling[:4])
+            )
+
+        if matched_actions:
+            reasons.append(
+                "พบคำชักชวนฝากถอนหรือรับโบนัส"
+            )
+
+        if suspicious_bonus_link:
+            reasons.append(
+                "พบข้อเสนอหรือรางวัลร่วมกับลิงก์"
+            )
+
+        if suspicious_income:
+            reasons.append(
+                "พบคำชักชวนหารายได้ที่น่าสงสัย"
             )
 
         if has_short_url:
-            reasons.append("พบลิงก์ย่อ")
-
+            reasons.append("พบลิงก์ย่อที่ควรตรวจสอบ")
         elif has_url:
-            reasons.append("พบ URL")
+            reasons.append("พบ URL ในข้อความ")
 
-        if suspicious_offer_with_link:
-            reasons.append("พบคำชวนรับของฟรีหรือรางวัลร่วมกับลิงก์")
+        if is_gambling:
+            category = "gambling_scam"
+            warning_title = "ระวังข้อความชักชวนเกี่ยวกับการพนัน"
+            warning_message = (
+                "ข้อความนี้มีรูปแบบเกี่ยวกับการพนันหรือการชักชวนฝากถอน "
+                "อาจทำให้สูญเสียเงินหรือถูกหลอกให้โอนเงินได้ "
+                "อย่ากดลิงก์ อย่าโอนเงิน และอย่าเปิดเผยข้อมูลส่วนตัว"
+            )
+            safety_steps = [
+                "ห้ามกดลิงก์หรือดาวน์โหลดแอปจากข้อความ",
+                "ห้ามโอนเงินเพื่อรับโบนัส ปลดล็อกบัญชี หรือถอนรางวัล",
+                "อย่าเปิดเผยรหัสผ่าน PIN หรือ OTP",
+                "บล็อกและรายงานข้อความที่น่าสงสัย",
+                "หากเสียเงินหรือสงสัยว่าถูกหลอก ให้ติดต่อธนาคารทันทีและขอความช่วยเหลือจาก AOC 1441",
+            ]
 
-        if suspicious_gambling_promotion:
-            reasons.append("พบรูปแบบโฆษณาที่เกี่ยวข้องกับการพนัน")
+        elif suspicious_bonus_link or suspicious_income:
+            category = "suspicious_offer"
+            warning_title = "ระวังข้อเสนอที่อาจหลอกให้เสียเงิน"
+            warning_message = (
+                "ข้อความมีรูปแบบชักชวนรับรางวัลหรือหารายได้ที่ควรตรวจสอบ "
+                "ยังไม่สามารถยืนยันได้ว่าเป็นการหลอกลวง "
+                "อย่ารีบกดลิงก์ โอนเงิน หรือส่งข้อมูลส่วนตัว"
+            )
+            safety_steps = [
+                "ตรวจสอบผู้ส่งผ่านช่องทางทางการที่ค้นหาเอง",
+                "อย่าโอนเงินล่วงหน้าเพื่อรับงาน โบนัส หรือรางวัล",
+                "อย่าเปิดเผยรหัสผ่าน PIN หรือ OTP",
+                "หากสงสัยว่าเป็นมิจฉาชีพ ให้บล็อกและรายงานข้อความ",
+                "หากเสียเงินหรือสงสัยว่าถูกหลอก ให้ติดต่อธนาคารทันทีและขอความช่วยเหลือจาก AOC 1441",
+            ]
+
+        else:
+            category = None
+            warning_title = None
+            warning_message = None
+            safety_steps = []
 
         return {
-            "flag": True,
-            "reason": " และ ".join(reasons),
+            "flag": is_suspicious,
+            "is_gambling": is_gambling,
+            "category": category,
+            "reason": " และ ".join(reasons) if reasons else None,
+            "warning_title": warning_title,
+            "warning_message": warning_message,
+            "safety_steps": safety_steps,
         }
 
     def _apply_risk_rule(self, text, result):
-        """ใช้กฎเสริมกับผลทำนายที่สำเร็จ"""
+        """เพิ่มผลการตรวจจับและคำเตือนความปลอดภัย"""
+        result = dict(result)
         rule = self._risk_rule(text)
 
+        result["risk_rule_triggered"] = rule["flag"]
+        result["is_gambling_warning"] = rule["is_gambling"]
+        result["warning_category"] = rule["category"]
+        result["detection_reason"] = rule["reason"]
+        result["warning_title"] = rule["warning_title"]
+        result["warning_message"] = rule["warning_message"]
+        result["safety_steps"] = rule["safety_steps"]
+        result["rule_based"] = False
+
+        # กฎเสริมเปลี่ยนผลเป็น SPAM เมื่อมีหลักฐานตามกฎที่กำหนด
         if rule["flag"] and result.get("available"):
-            result = dict(result)
             result["label"] = "SPAM"
             result["class_id"] = 1
             result["rule_based"] = True
-            result["detection_reason"] = rule["reason"]
-
-            # กฎเสริมเป็นการแจ้งเตือน ไม่ใช่ความน่าจะเป็นจากโมเดล
-            result["risk_rule_triggered"] = True
-
-        else:
-            result = dict(result)
-            result["rule_based"] = False
-            result["risk_rule_triggered"] = False
-            result.setdefault("detection_reason", None)
 
         return result
 
     def predict(self, text, chosen="all"):
-        """ทำนายข้อความด้วยโมเดลที่เลือก"""
         text = str(text or "").strip()
 
         if not text:
@@ -324,9 +375,8 @@ class ModelService:
                     }
                     continue
 
-                pipeline = self.cache[name]
-
                 try:
+                    pipeline = self.cache[name]
                     pred = int(pipeline.predict([text])[0])
                     confidence = self._confidence(pipeline, text, pred)
 
@@ -372,16 +422,13 @@ class ModelService:
             )
 
         if chosen == "all":
-            # เลือกผลจาก Deep Learning หากพร้อมใช้งาน
             selected = (
                 "Deep Learning"
                 if "Deep Learning" in available_results
                 else available_results[0]
             )
         else:
-            selected = (
-                chosen if chosen in available_results else None
-            )
+            selected = chosen if chosen in available_results else None
 
         return {
             "predictions": predictions,
@@ -392,33 +439,28 @@ class ModelService:
             "model_count_available": len(available_results),
             "note": (
                 "โมเดลพื้นฐานฝึกจากชุดข้อมูลภาษาอังกฤษ "
-                "มีการใช้กฎเสริมตรวจจับคำเสี่ยงและรูปแบบลิงก์ "
-                "ผลทำนายอาจไม่ถูกต้องทุกกรณี "
-                "และกฎเสริมอาจตรวจพบข้อความปกติผิดพลาดได้"
+                "กฎเสริมช่วยแจ้งเตือนรูปแบบที่น่าสงสัย "
+                "ผลอาจผิดพลาดได้และไม่ใช่การยืนยันว่าผู้ส่งเป็นมิจฉาชีพ"
             ),
         }
 
     @staticmethod
     def _confidence(model, text, pred):
-        """คำนวณความมั่นใจของโมเดล Machine Learning"""
         if hasattr(model, "predict_proba"):
             probs = model.predict_proba([text])[0]
             classes = list(
                 getattr(model.estimator, "classes_", [0, 1])
             )
-
             class_index = (
                 classes.index(int(pred))
                 if int(pred) in classes
                 else int(pred)
             )
-
             return round(float(probs[class_index]) * 100, 2)
 
         return 0.0
 
     def _predict_dl(self, text):
-        """ทำนายด้วย Deep Learning โดยส่ง Tensor ชนิด tf.string"""
         if self.dl_model is None:
             return {
                 "available": False,
@@ -430,14 +472,9 @@ class ModelService:
 
         try:
             input_tensor = tf.convert_to_tensor(
-                [str(text)],
-                dtype=tf.string,
+                [str(text)], dtype=tf.string
             )
-
-            output = self.dl_model(
-                input_tensor,
-                training=False,
-            )
+            output = self.dl_model(input_tensor, training=False)
 
             if hasattr(output, "numpy"):
                 output = output.numpy()
@@ -453,7 +490,6 @@ class ModelService:
                 raise ValueError("ผลลัพธ์ของโมเดลไม่ใช่ตัวเลขปกติ")
 
             score = min(max(score, 0.0), 1.0)
-
             pred = int(score >= 0.5)
             confidence = score if pred else 1.0 - score
 
@@ -485,7 +521,6 @@ class ModelService:
 
     @staticmethod
     def _make_vectorizer():
-        """สร้างตัวแปลงข้อความเป็น Character TF-IDF"""
         return TfidfVectorizer(
             analyzer="char",
             ngram_range=(2, 5),
@@ -495,7 +530,7 @@ class ModelService:
         )
 
     def evaluate_and_save(self, db_path):
-        """ฝึกและประเมินโมเดลพื้นฐาน พร้อมบันทึกผลลงฐานข้อมูล"""
+        """ฝึกและประเมิน Naive Bayes และ Logistic Regression"""
         if not self.dataset_path.exists():
             raise FileNotFoundError(
                 "ไม่พบ data/SMSSpamCollection "
@@ -512,7 +547,6 @@ class ModelService:
         ) as f:
             for line in f:
                 parts = line.rstrip("\n").split("\t", 1)
-
                 if len(parts) == 2 and parts[0] in ("ham", "spam"):
                     rows.append(
                         (parts[1], 1 if parts[0] == "spam" else 0)
@@ -529,8 +563,7 @@ class ModelService:
 
         fingerprint = hashlib.sha256(
             "\n".join(
-                f"{int(label)}\t{text}"
-                for text, label in rows
+                f"{int(label)}\t{text}" for text, label in rows
             ).encode("utf-8")
         ).hexdigest()
 
@@ -556,7 +589,6 @@ class ModelService:
 
         for name, estimator in estimators.items():
             vectorizer = self._make_vectorizer()
-
             Xtr = vectorizer.fit_transform(X_train)
             Xte = vectorizer.transform(X_test)
 
@@ -575,23 +607,15 @@ class ModelService:
                 ).isoformat(timespec="seconds"),
                 "dataset_fingerprint": fingerprint,
                 "test_size": int(len(y_test)),
-                "accuracy": float(
-                    accuracy_score(y_test, pred)
-                ),
+                "accuracy": float(accuracy_score(y_test, pred)),
                 "precision": float(
-                    precision_score(
-                        y_test, pred, zero_division=0
-                    )
+                    precision_score(y_test, pred, zero_division=0)
                 ),
                 "recall": float(
-                    recall_score(
-                        y_test, pred, zero_division=0
-                    )
+                    recall_score(y_test, pred, zero_division=0)
                 ),
                 "f1": float(
-                    f1_score(
-                        y_test, pred, zero_division=0
-                    )
+                    f1_score(y_test, pred, zero_division=0)
                 ),
                 "confusion_matrix": json.dumps(cm),
             }
@@ -599,7 +623,6 @@ class ModelService:
             output.append(metrics)
 
             artifact = _Pipeline(vectorizer, estimator)
-
             filename = (
                 "naive_bayes.joblib"
                 if name == "Naive Bayes"
@@ -619,16 +642,9 @@ class ModelService:
                     """
                     INSERT OR REPLACE INTO model_metrics
                     (
-                        model_name,
-                        model_version,
-                        evaluated_at,
-                        dataset_fingerprint,
-                        test_size,
-                        accuracy,
-                        precision,
-                        recall,
-                        f1,
-                        confusion_matrix
+                        model_name, model_version, evaluated_at,
+                        dataset_fingerprint, test_size, accuracy,
+                        precision, recall, f1, confusion_matrix
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
@@ -654,7 +670,7 @@ class ModelService:
 
 
 class _Pipeline:
-    """เก็บ vectorizer และ estimator ไว้ด้วยกันเพื่อบันทึกด้วย joblib"""
+    """เก็บ vectorizer และ estimator สำหรับ joblib"""
 
     def __init__(self, vectorizer, estimator):
         self.vectorizer = vectorizer
