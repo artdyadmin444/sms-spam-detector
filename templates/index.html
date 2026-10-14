@@ -13,6 +13,7 @@
 </section>
 
 <div class="row g-4">
+  <!-- ส่วนกรอกข้อความ -->
   <div class="col-lg-7">
     <section class="panel p-4 h-100">
       <div class="d-flex align-items-center justify-content-between mb-3">
@@ -29,16 +30,19 @@
       ></textarea>
 
       <div class="d-flex flex-wrap gap-2 mt-3">
-        <button class="btn btn-primary px-4" id="checkBtn">
+        <button class="btn btn-primary px-4" id="checkBtn" type="button">
           <span class="btn-label">ตรวจสอบข้อความ</span>
         </button>
-        <button class="btn btn-outline-secondary" id="sampleSpam">
+
+        <button class="btn btn-outline-secondary" id="sampleSpam" type="button">
           ตัวอย่าง SPAM
         </button>
-        <button class="btn btn-outline-secondary" id="sampleHam">
+
+        <button class="btn btn-outline-secondary" id="sampleHam" type="button">
           ตัวอย่าง HAM
         </button>
-        <button class="btn btn-link text-secondary" id="clearBtn">
+
+        <button class="btn btn-link text-secondary" id="clearBtn" type="button">
           ล้างข้อความ
         </button>
       </div>
@@ -47,10 +51,15 @@
         ระบบไม่บันทึกเนื้อหาข้อความลงฐานข้อมูลประวัติ
       </div>
 
-      <div class="alert alert-danger mt-3 d-none" id="errorBox" role="alert"></div>
+      <div
+        class="alert alert-danger mt-3 d-none"
+        id="errorBox"
+        role="alert"
+      ></div>
     </section>
   </div>
 
+  <!-- ส่วนผลการตรวจจับ -->
   <div class="col-lg-5">
     <section class="panel p-4 h-100">
       <h2 class="h4 mb-3">ผลการตรวจจับ</h2>
@@ -99,7 +108,7 @@
   </div>
 </div>
 
-<!-- กล่องคำเตือนข้อความเสี่ยง -->
+<!-- กล่องคำเตือน: app.js จะแสดงทุกครั้งที่ผลหลักเป็น SPAM -->
 <section
   id="warningBox"
   class="alert alert-warning mt-4 d-none"
@@ -107,10 +116,10 @@
   aria-live="polite"
 >
   <h2 class="h4 fw-bold" id="warningTitle">
-    ⚠️ คำเตือนความปลอดภัย
+    ⚠️ ตรวจพบข้อความ SPAM
   </h2>
 
-  <p class="fw-semibold mb-2" id="warningMessage"></p>
+  <p class="mb-3" id="warningMessage"></p>
 
   <div id="warningReasonContainer" class="mb-3 d-none">
     <strong>เหตุผลที่ตรวจพบ:</strong>
@@ -123,8 +132,11 @@
   </div>
 </section>
 
+<!-- ส่วนเปรียบเทียบโมเดล -->
 <section class="panel p-4 mt-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div
+    class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3"
+  >
     <div>
       <h2 class="h4 mb-1">เปรียบเทียบโมเดลทั้ง 3 แบบ</h2>
       <p class="text-secondary mb-0 small">
@@ -132,7 +144,11 @@
       </p>
     </div>
 
-    <button class="btn btn-outline-primary btn-sm" id="compareBtn">
+    <button
+      class="btn btn-outline-primary btn-sm"
+      id="compareBtn"
+      type="button"
+    >
       เปรียบเทียบข้อความนี้
     </button>
   </div>
@@ -143,7 +159,9 @@
       <div class="model-card h-100">
         <div class="d-flex justify-content-between gap-2">
           <h3 class="h6">{{ model.name }}</h3>
-          <span class="status-dot {{ 'online' if model.available else 'offline' }}"></span>
+          <span
+            class="status-dot {{ 'online' if model.available else 'offline' }}"
+          ></span>
         </div>
 
         <p class="small text-secondary mb-0">
@@ -161,6 +179,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
 {% endblock %}
-
