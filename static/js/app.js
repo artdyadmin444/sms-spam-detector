@@ -112,10 +112,10 @@ function renderResult(data) {
     document.getElementById("resultState").classList.remove("d-none");
 
     const label = document.getElementById("resultLabel");
+    const isSpam = String(result.label).toUpperCase() === "SPAM";
 
     label.textContent = result.label;
-    label.className =
-      `result-pill mb-3 ${result.label === "SPAM" ? "spam" : ""}`;
+    label.className = `result-pill mb-3 ${isSpam ? "spam" : ""}`;
 
     const confidence = Number(result.confidence) || 0;
 
@@ -123,12 +123,9 @@ function renderResult(data) {
       `${confidence.toFixed(2)}%`;
 
     const bar = document.getElementById("confidenceBar");
-
     bar.style.width =
       `${Math.max(0, Math.min(100, confidence))}%`;
-
-    bar.className =
-      `progress-bar ${result.label === "SPAM" ? "spam" : ""}`;
+    bar.className = `progress-bar ${isSpam ? "spam" : ""}`;
 
     document.getElementById("selectedModel").textContent =
       data.selected_model || "ไม่ระบุ";
@@ -139,12 +136,11 @@ function renderResult(data) {
     document.getElementById("resultNote").textContent =
       data.note || "";
 
-    // SPAM ต้องแสดงคำเตือนทุกครั้ง
-    if (String(result.label).toUpperCase() === "SPAM") {
+    // แสดงคำเตือนทุกครั้งที่ผลหลักเป็น SPAM
+    if (isSpam) {
       const warning = data.warning || {};
 
       renderWarning({
-        show: true,
         title: warning.title || "⚠️ ตรวจพบข้อความ SPAM",
         message:
           warning.message ||
@@ -163,9 +159,7 @@ function renderResult(data) {
                 "ตรวจสอบผู้ส่งก่อนดำเนินการใด ๆ"
               ]
       });
-
     } else {
-      // HAM ไม่ต้องแสดงคำเตือน
       hideWarning();
     }
 
@@ -187,27 +181,24 @@ function renderResult(data) {
     if (!target) return;
 
     if (!item || !item.available) {
-      target.textContent =
-        item?.message || "ยังไม่มีไฟล์โมเดล";
+      target.textContent = item?.message || "ยังไม่มีไฟล์โมเดล";
       return;
     }
 
-    const label = document.createElement("span");
-
-    label.textContent = item.label;
-    label.className =
-      item.label === "SPAM"
+    const modelLabel = document.createElement("span");
+    modelLabel.textContent = item.label;
+    modelLabel.className =
+      String(item.label).toUpperCase() === "SPAM"
         ? "text-danger"
         : "text-success";
 
     const confidenceText = document.createElement("span");
-
     confidenceText.className = "text-secondary fw-normal";
     confidenceText.textContent =
       `ความมั่นใจ ${Number(item.confidence).toFixed(2)}%`;
 
     target.replaceChildren(
-      label,
+      modelLabel,
       document.createElement("br"),
       confidenceText
     );
@@ -217,33 +208,25 @@ function renderResult(data) {
 // แสดงกล่องคำเตือน
 function renderWarning(warning) {
   const warningBox = document.getElementById("warningBox");
-
   if (!warningBox) return;
 
   warningBox.classList.remove("d-none");
 
   const title = document.getElementById("warningTitle");
   const message = document.getElementById("warningMessage");
-
   const reasonContainer =
     document.getElementById("warningReasonContainer");
-
   const reason = document.getElementById("warningReason");
-
   const stepsContainer =
     document.getElementById("warningStepsContainer");
-
   const steps = document.getElementById("warningSteps");
 
   if (title) {
-    title.textContent =
-      warning.title || "⚠️ ตรวจพบข้อความ SPAM";
+    title.textContent = warning.title;
   }
 
   if (message) {
-    message.textContent =
-      warning.message ||
-      "ข้อความนี้มีความเสี่ยงที่จะเป็นสแปม โปรดระมัดระวัง";
+    message.textContent = warning.message;
   }
 
   if (reasonContainer && reason) {
@@ -259,24 +242,18 @@ function renderWarning(warning) {
   if (stepsContainer && steps) {
     steps.replaceChildren();
 
-    const safetySteps = Array.isArray(warning.safety_steps)
-      ? warning.safety_steps
-      : [];
-
-    safetySteps.forEach((step) => {
+    warning.safety_steps.forEach((step) => {
       const li = document.createElement("li");
       li.textContent = String(step);
       steps.appendChild(li);
     });
 
-    if (safetySteps.length > 0) {
-      stepsContainer.classList.remove("d-none");
-    } else {
-      stepsContainer.classList.add("d-none");
-    }
+    stepsContainer.classList.toggle(
+      "d-none",
+      warning.safety_steps.length === 0
+    );
   }
 
-  // ใช้สีแดงสำหรับคำเตือนเกี่ยวกับการพนัน
   warningBox.classList.remove(
     "alert-warning",
     "alert-danger",
@@ -291,7 +268,6 @@ function renderWarning(warning) {
 // ซ่อนกล่องคำเตือน
 function hideWarning() {
   const warningBox = document.getElementById("warningBox");
-
   if (!warningBox) return;
 
   warningBox.classList.add("d-none");
