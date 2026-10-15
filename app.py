@@ -2,6 +2,8 @@ import os
 import sqlite3
 import secrets
 import hashlib
+import re
+import unicodedata
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -41,6 +43,35 @@ app.config.update(
 )
 
 models = ModelService(BASE_DIR)
+
+
+def detect_high_risk_gambling_sms(text):
+    """ตรวจรูปแบบ SMS ชักชวนพนันที่มีคำโปรโมชันและลิงก์ร่วมกัน
+
+    เป็นกฎเสริมจากโมเดล ไม่ใช่ตัวแทนการฝึกโมเดลใหม่
+    และตั้งใจใช้เงื่อนไขหลายอย่างร่วมกันเพื่อลด false positive
+    """
+    normalized = unicodedata.normalize("NFKC", text).lower()
+    compact = re.sub(r"[^\wก-๙]+", "", normalized, flags=re.UNICODE)
+
+    has_link = bool(
+        re.search(r"https?://|www\.|cutt\s*\.\s*ly|cuttly|bit\.ly|tinyurl", normalized)
+    )
+    has_promotion = any(
+        term in compact
+        for term in ("ฟรี", "รับเลย", "เครดิตฟรี", "โบนัส", "สมัครเลย", "โปรพิเศษ")
+    )
+    gambling_terms = (
+        "บาคาร่า", "บาคร", "สล็อต", "พนัน", "คาสิโน", "ปล่อยแตก",
+        "ถอนไม่อั้น", "ฝากถอน", "หวย", "เดิมพัน",
+    )
+    has_gambling_term = any(term in compact for term in gambling_terms)
+
+    # คำว่า PG เพียงอย่างเดียวไม่เพียงพอ ต้องมีคำโปรโมชันและลิงก์ด้วย
+    has_pg_marker = bool(re.search(r"(?<![a-z])pg(?![a-z])", normalized)) or "pg" in compact
+    has_strong_gambling_signal = has_gambling_term or (has_pg_marker and "แตก" in compact)
+
+    return has_link and has_promotion and has_strong_gambling_signal
 
 
 def utc_now():
@@ -186,6 +217,30 @@ def api_predict():
         return jsonify(
             error="เกิดข้อผิดพลาดระหว่างตรวจสอบข้อความ"
         ), 500
+
+    # กฎเสริมสำหรับ SMS โปรโมตการพนันที่มีลิงก์เสี่ยง
+    # ถ้าตรงเงื่อนไข ให้ผลสุดท้ายเป็น SPAM แม้โมเดลจะทำนายเป็น HAM
+    rule_based_gambling = detect_high_risk_gambling_sms(text)
+    if rule_based_gambling:
+        for prediction in result.get("predictions", {}).values():
+            if prediction.get("available", True):
+                prediction["label"] = "SPAM"
+                prediction["warning_category"] = "danger"
+                prediction["warning_title"] = "ตรวจพบข้อความเสี่ยงเกี่ยวกับการพนัน"
+                prediction["warning_message"] = (
+                    "ข้อความมีคำโปรโมชันชักชวน พร้อมสัญญาณการพนันและลิงก์ภายนอก "
+                    "ระบบจึงจัดเป็น SPAM ด้วยกฎความปลอดภัยเพิ่มเติม"
+                )
+                prediction["detection_reason"] = (
+                    "พบคำโปรโมชันร่วมกับคำหรือรูปแบบที่เกี่ยวข้องกับการพนันและลิงก์"
+                )
+                prediction["is_gambling_warning"] = True
+                prediction["safety_steps"] = [
+                    "อย่ากดลิงก์หรือกรอกข้อมูลส่วนตัว",
+                    "อย่าโอนเงินหรือส่งรหัส OTP",
+                    "บล็อกผู้ส่งและรายงานข้อความหากไม่รู้จักผู้ส่ง",
+                ]
+                prediction["detection_source"] = "rule_based_safety"
 
     selected = result.get("selected_model")
     predictions = result.get("predictions", {})
